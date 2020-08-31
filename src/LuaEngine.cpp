@@ -18,7 +18,12 @@ extern "C" {
     #include "lauxlib.h"
 }
 
-using namespace m8r;
+using namespace lua;
+
+m8r::SharedPtr<m8r::Executable> LuaScriptingLanguage::create() const
+{
+    return m8r::SharedPtr<m8r::Executable>(new LuaEngine());
+}
 
 const char* LuaEngine::readStream(lua_State* L, void* data, size_t* size)
 {
@@ -34,24 +39,24 @@ const char* LuaEngine::readStream(lua_State* L, void* data, size_t* size)
     return &(engine->_buf);
 }
 
-LuaEngine::LuaEngine(const Stream& stream)
+bool LuaEngine::load(const m8r::Stream& stream)
 {
-    system()->printf("LuaEngine ctos enter: Free heap: %d\n\n", system()->heapFreeSize());
+    m8r::system()->printf("LuaEngine ctos enter: Free heap: %d\n\n", m8r::system()->heapFreeSize());
     _stream = &stream;
     _state = luaL_newstate();
-    system()->printf("LuaEngine after luaL_newstate: Free heap: %d\n\n", system()->heapFreeSize());
+    m8r::system()->printf("LuaEngine after luaL_newstate: Free heap: %d\n\n", m8r::system()->heapFreeSize());
     if (!_state) {
-        _error = Error::Code::OutOfMemory;
+        _error = m8r::Error::Code::OutOfMemory;
         _nerrors = 1;
     }
     
     luaL_openlibs(_state);
-    system()->printf("LuaEngine after luaL_openlibs: Free heap: %d\n\n", system()->heapFreeSize());
+    m8r::system()->printf("LuaEngine after luaL_openlibs: Free heap: %d\n\n", m8r::system()->heapFreeSize());
     
     int result = lua_load(_state, readStream, this, "", nullptr);
-    system()->printf("LuaEngine after lua_load: Free heap: %d\n\n", system()->heapFreeSize());
+    m8r::system()->printf("LuaEngine after lua_load: Free heap: %d\n\n", m8r::system()->heapFreeSize());
     if (result == LUA_OK) {
-        _error = Error::Code::OK;
+        _error = m8r::Error::Code::OK;
         _nerrors = 0;
         _functionIndex = luaL_ref(_state, LUA_REGISTRYINDEX);
     } else {
@@ -59,10 +64,10 @@ LuaEngine::LuaEngine(const Stream& stream)
         _errorString = lua_tostring(_state, -1);
         
         if (result == LUA_ERRSYNTAX) {
-            _error = Error::Code::ParseError;
+            _error = m8r::Error::Code::ParseError;
             _nerrors = 1;
         } else {
-            _error = Error::Code::InternalError;
+            _error = m8r::Error::Code::InternalError;
             _nerrors = 1;
         }
         lua_close(_state);
@@ -78,23 +83,23 @@ LuaEngine::~LuaEngine()
     }
 }
 
-CallReturnValue LuaEngine::execute()
+m8r::CallReturnValue LuaEngine::execute()
 {
-    system()->printf("LuaEngine::execute enter: Free heap: %d\n\n", system()->heapFreeSize());
+    m8r::system()->printf("LuaEngine::execute enter: Free heap: %d\n\n", m8r::system()->heapFreeSize());
     if (!_state) {
-        return CallReturnValue(CallReturnValue::Error::InternalError);
+        return m8r::CallReturnValue(m8r::Error::Code::InternalError);
     }
 
     lua_rawgeti(_state, LUA_REGISTRYINDEX, _functionIndex);
-    system()->printf("LuaEngine::execute before pcall: Free heap: %d\n\n", system()->heapFreeSize());
+    m8r::system()->printf("LuaEngine::execute before pcall: Free heap: %d\n\n", m8r::system()->heapFreeSize());
     int status = lua_pcall(_state, 0, 0, 0);
     if (status != 0) {
         printf("***** Lua error on exit: returned status %d\n", status);
     }
     lua_close(_state);
     _state = nullptr;
-    system()->printf("LuaEngine::execute exit: Free heap: %d\n\n", system()->heapFreeSize());
+    m8r::system()->printf("LuaEngine::execute exit: Free heap: %d\n\n", m8r::system()->heapFreeSize());
     return status == 0 ?
-        CallReturnValue(CallReturnValue::Type::Finished) :
-        CallReturnValue(CallReturnValue::Error::InternalError);
+        m8r::CallReturnValue(m8r::CallReturnValue::Type::Finished) :
+        m8r::CallReturnValue(m8r::Error::Code::InternalError);
 }

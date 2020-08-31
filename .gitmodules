@@ -1,3 +1,9 @@
 [submodule "esp/spiffs"]
 	path = esp/spiffs
 	url = git@github.com:cmarrin/spiffs.git
+[submodule "lua"]
+	path = lua
+	url = https://github.com/lua/lua.git
+[submodule "libm8r"]
+	path = libm8r
+	url = git@github.com:cmarrin/libm8r.git
